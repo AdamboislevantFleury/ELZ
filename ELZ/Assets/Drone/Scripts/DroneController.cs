@@ -82,17 +82,20 @@ public class DroneController : MonoBehaviour
         pitch -= mouseY;
         pitch = Mathf.Clamp(pitch, pitchMin, pitchMax);
 
-        // Appliquer la rotation au drone
+        // Appliquer la rotation horizontale (yaw) au drone
         transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+
+        // Appliquer la rotation verticale (pitch) à la caméra
+        if (cameraTransform != null)
+            cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
     }
+
 
     void UpdateCameraPosition()
     {
         if (cameraTransform != null)
         {
-            Quaternion camRotation = Quaternion.Euler(pitch, yaw, 0f);
-            cameraTransform.position = transform.position + camRotation * cameraOffset;
-            cameraTransform.rotation = camRotation;
+            cameraTransform.position = transform.position + transform.TransformVector(cameraOffset);
         }
     }
 }

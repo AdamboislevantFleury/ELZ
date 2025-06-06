@@ -344,12 +344,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2076c54236551bf47b166c187bf9934f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  detectionRadius: 20
-  detectableLayers:
-    m_Bits: 0
-  sphereMaterial: {fileID: 0}
-  visualSphere: {fileID: 0}
-  detectionCollider: {fileID: 0}
 --- !u!135 &491425065
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -383,11 +377,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8e422ec287d3b914bab0818f649c170f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  detectionRadius: 200
-  detectableLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  highlightMaterial: {fileID: 0}
+  height: 200
+  angle: 45
+  coneMaterial: {fileID: 0}
+  resolution: 30
 --- !u!1 &610895615
 GameObject:
   m_ObjectHideFlags: 0
@@ -692,7 +685,7 @@ GameObject:
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
   m_Layer: 0
-  m_Name: Third person Camera
+  m_Name: First person Camera
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -766,7 +759,7 @@ Transform:
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
   m_LocalRotation: {x: -0.000000021855694, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 2, z: -5}
+  m_LocalPosition: {x: 0, y: 0, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -784,7 +777,7 @@ GameObject:
   - component: {fileID: 1113983053}
   - component: {fileID: 1113983054}
   m_Layer: 0
-  m_Name: First person Camera
+  m_Name: Third person Camera
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -858,7 +851,7 @@ Transform:
   m_GameObject: {fileID: 1113983052}
   serializedVersion: 2
   m_LocalRotation: {x: -0.000000021855694, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0.8}
+  m_LocalPosition: {x: 0, y: 2, z: -5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
