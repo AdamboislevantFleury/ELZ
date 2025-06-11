@@ -711,18 +711,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 41368ca0055404749918c5b1b998dd24, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  forwardKey: 122
-  backwardKey: 115
-  leftKey: 113
-  rightKey: 100
-  upKey: 32
-  downKey: 306
-  moveSpeed: 5
-  mouseSensitivity: 2
-  pitchMin: -85
-  pitchMax: 85
-  cameraTransform: {fileID: 0}
-  cameraOffset: {x: 0, y: 1.5, z: -4}
+  moveSpeed: 25
+  rotationSpeed: 5
+  landingCheckDistance: 1.5
+  useRandomTarget: 0
 --- !u!143 &491425063
 CharacterController:
   m_ObjectHideFlags: 0
@@ -801,6 +793,37 @@ MonoBehaviour:
   minDetectionDistance: 2
   memoryDuration: 0.3
   weatherManager: {fileID: 208404642}
+--- !u!1 &523312276
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 523312277}
+  m_Layer: 0
+  m_Name: Spawnpoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &523312277
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 523312276}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1017928519}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &556377989
 GameObject:
   m_ObjectHideFlags: 0
@@ -1226,6 +1249,54 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 810268379546514720, guid: 3247264e85f98c54792020f59b8513d7, type: 3}
   m_PrefabInstance: {fileID: 261733727}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1017928517
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1017928519}
+  - component: {fileID: 1017928518}
+  m_Layer: 0
+  m_Name: DroneSpawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1017928518
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1017928517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c997662d4d219bd4f817ac0fe57a8a38, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dronePrefab: {fileID: 134496185276144424, guid: ce1e8e032db7c26449ae1d260b060f0c, type: 3}
+  spawnPoint: {fileID: 523312277}
+  useRandomTarget: 0
+--- !u!4 &1017928519
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1017928517}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 100, y: 150, z: 100}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 523312277}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &1246972190 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 810268379546514720, guid: 3247264e85f98c54792020f59b8513d7, type: 3}
@@ -1703,6 +1774,8 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 208404643}
+  - {fileID: 2018516274}
+  - {fileID: 1017928519}
   - {fileID: 705507995}
   - {fileID: 1577303015}
   - {fileID: 1533361359}
@@ -1714,4 +1787,3 @@ SceneRoots:
   - {fileID: 94285205}
   - {fileID: 19606843}
   - {fileID: 927796430}
-  - {fileID: 2018516274}

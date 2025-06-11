@@ -127,13 +127,6 @@ public class ConeDetector : MonoBehaviour
                 {
                     detectionMemory[rend].lastSeenTime = currentTime;
                 }
-
-                var labelGO = detectionMemory[rend].label;
-                labelGO.transform.position = centroid + Vector3.up * 2f;
-                labelGO.transform.rotation = Quaternion.LookRotation(Camera.main.transform.forward);
-                labelGO.GetComponent<TextMesh>().text =
-                    $"Reliability: {(reliability * 100f):0}%\nSlope: {slopeDeg:0.0}°\nWeather: {(weatherFactor * 100f):0}%";
-                labelGO.SetActive(true);
             }
         }
 

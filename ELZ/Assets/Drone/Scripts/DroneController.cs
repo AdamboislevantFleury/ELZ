@@ -1,101 +1,99 @@
 using UnityEngine;
 
-[RequireComponent(typeof(CharacterController))]
 public class DroneController : MonoBehaviour
 {
-    [Header("Contrôles personnalisables")]
-    public KeyCode forwardKey = KeyCode.W;
-    public KeyCode backwardKey = KeyCode.S;
-    public KeyCode leftKey = KeyCode.A;
-    public KeyCode rightKey = KeyCode.D;
-    public KeyCode upKey = KeyCode.Space;
-    public KeyCode downKey = KeyCode.LeftControl;
+    public bool useRandomTarget = false;
+    private ConnectedTileTerrain terrain;
+    private ConnectedTileTerrain.TileData targetTile;
 
-    [Header("Paramètres de déplacement")]
-    public float moveSpeed = 200f;
+    public float moveSpeed = 10f;
+    public float arrivalThreshold = 0.5f;
 
-    [Header("Rotation à la souris")]
-    public float mouseSensitivity = 2f;
-    public float pitchMin = -85f;
-    public float pitchMax = 85f;
-
-    [Header("Caméra fixée au drone")]
-    public Transform cameraTransform;
-    public Vector3 cameraOffset = new Vector3(0, 1.5f, -4f);
-
-    private CharacterController controller;
-    private float yaw = 0f;
-    private float pitch = 0f;
+    public static int successfulLandingsMostReliable = 0;
+    public static int successfulLandingsRandom = 0;
 
     void Start()
     {
-        controller = GetComponent<CharacterController>();
+        terrain = FindObjectOfType<ConnectedTileTerrain>();
 
-        if (cameraTransform == null && Camera.main != null)
-            cameraTransform = Camera.main.transform;
+        if (terrain == null)
+        {
+            Debug.LogError("ConnectedTileTerrain not found in the scene.");
+            return;
+        }
 
-        // Verrouille le curseur au centre
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        // Choisir la méthode
+        if (useRandomTarget)
+        {
+            SetRandomTargetTile();
+        }
+        else
+        {
+            SetMostReliableTargetTile();
+        }
     }
 
     void Update()
     {
-        HandleMouseLook();
-        HandleMovement();
-        UpdateCameraPosition();
+        if (targetTile == null) return;
 
-        // Appuyer sur Échap pour libérer la souris
-        if (Input.GetKeyDown(KeyCode.Escape))
+        Vector3 target = targetTile.center;
+        Vector3 move = (target - transform.position).normalized * moveSpeed * Time.deltaTime;
+        transform.position += move;
+
+        // Atterrissage
+        if (Vector3.Distance(transform.position, target) < arrivalThreshold)
         {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
+            if (useRandomTarget)
+                successfulLandingsRandom++;
+            else
+                successfulLandingsMostReliable++;
+
+            Destroy(gameObject);
         }
     }
 
-    void HandleMovement()
+    public void SetMostReliableTargetTile()
     {
-        Vector3 direction = Vector3.zero;
+        if (terrain == null || terrain.tileGrid == null) return;
 
-        if (Input.GetKey(forwardKey))
-            direction += transform.forward;
-        if (Input.GetKey(backwardKey))
-            direction -= transform.forward;
-        if (Input.GetKey(leftKey))
-            direction -= transform.right;
-        if (Input.GetKey(rightKey))
-            direction += transform.right;
-        if (Input.GetKey(upKey))
-            direction += transform.up;
-        if (Input.GetKey(downKey))
-            direction -= transform.up;
+        float maxReliability = -1f;
 
-        controller.Move(direction.normalized * moveSpeed * Time.deltaTime);
-    }
-
-    void HandleMouseLook()
-    {
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
-
-        yaw += mouseX;
-        pitch -= mouseY;
-        pitch = Mathf.Clamp(pitch, pitchMin, pitchMax);
-
-        // Appliquer la rotation horizontale (yaw) au drone
-        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
-
-        // Appliquer la rotation verticale (pitch) à la caméra
-        if (cameraTransform != null)
-            cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
-    }
-
-
-    void UpdateCameraPosition()
-    {
-        if (cameraTransform != null)
+        for (int x = 0; x < terrain.gridSizeX; x++)
         {
-            cameraTransform.position = transform.position + transform.TransformVector(cameraOffset);
+            for (int z = 0; z < terrain.gridSizeZ; z++)
+            {
+                var tile = terrain.tileGrid[x, z];
+                if (tile != null && tile.reliability > maxReliability)
+                {
+                    maxReliability = tile.reliability;
+                    targetTile = tile;
+                }
+            }
         }
+    }
+
+    public void SetRandomTargetTile()
+    {
+        if (terrain == null || terrain.tileGrid == null) return;
+
+        int maxX = terrain.gridSizeX;
+        int maxZ = terrain.gridSizeZ;
+
+        for (int i = 0; i < 50; i++)
+        {
+            int x = Random.Range(0, maxX);
+            int z = Random.Range(0, maxZ);
+            var tile = terrain.tileGrid[x, z];
+
+            if (tile != null && tile.reliability > 0.01f)
+            {
+                targetTile = tile;
+                return;
+            }
+        }
+
+        // Fallback
+        SetMostReliableTargetTile();
     }
 }
