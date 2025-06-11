@@ -7,9 +7,11 @@ public class ConeDetector : MonoBehaviour
     [Header("Cone Settings")]
     public float height = 200f;
     public float angle = 45f;
-    public Material coneMaterial;
     public int resolution = 30;
     public KeyCode toggleKey = KeyCode.V;
+    
+    [Header("Distance Settings")]
+    public float minDetectionDistance = 2f; // Distance minimale depuis la base
 
     private GameObject coneVisual;
     private bool coneVisible = true;
@@ -29,71 +31,90 @@ public class ConeDetector : MonoBehaviour
         if (Input.GetKeyDown(toggleKey) && coneVisual != null)
             coneVisual.SetActive(!coneVisual.activeSelf);
 
-        Collider[] nearby = Physics.OverlapSphere(transform.position, height);
-        var affected = new HashSet<Renderer>();
         float weatherFactor = weatherManager != null ? weatherManager.GetWeatherReliability() : 1f;
 
-        foreach (var col in nearby)
+        var affected = new HashSet<Renderer>();
+        Vector3 origin = transform.position;
+        float minDistance = 2f; // Distance minimale à partir du sommet pour ignorer les objets trop proches
+        int rayCount = 200;     // Plus élevé = plus de précision
+
+        for (int i = 0; i < rayCount; i++)
         {
-            var mf = col.GetComponent<MeshFilter>();
-            var rend = col.GetComponent<Renderer>();
-            if (mf == null || rend == null || rend.material == null) continue;
+            float theta = Random.Range(0f, 2 * Mathf.PI);
+            float phi = Random.Range(0f, angle * Mathf.Deg2Rad); // Limité à l'angle du cône
 
-            if (!originalColors.ContainsKey(rend))
-                originalColors[rend] = rend.material.color;
+            // Sphère vers direction du cône
+            Vector3 dirLocal = new Vector3(
+                Mathf.Sin(phi) * Mathf.Cos(theta),
+                -Mathf.Cos(phi), // -Y car le cône pointe vers le bas
+                Mathf.Sin(phi) * Mathf.Sin(theta)
+            );
 
-            var vertices = mf.sharedMesh.vertices;
-            if (vertices == null || vertices.Length == 0) continue;
+            Vector3 direction = transform.TransformDirection(dirLocal);
 
-            Vector3 centroid = Vector3.zero;
-            foreach (var v in vertices)
-                centroid += col.transform.TransformPoint(v);
-            centroid /= vertices.Length;
-
-            float vDist = Mathf.Abs(centroid.y - transform.position.y);
-            if (vDist > height) { RestoreRenderer(rend); continue; }
-
-            Vector3 proj = new Vector3(transform.position.x, centroid.y, transform.position.z);
-            float hDist = Vector3.Distance(proj, centroid);
-            float maxRadius = Mathf.Tan(angle * Mathf.Deg2Rad) * vDist;
-            if (hDist > maxRadius) { RestoreRenderer(rend); continue; }
-
-            float lateral = 1f - Mathf.Clamp01(hDist / maxRadius);
-            float slopeDeg = Vector3.Angle(col.transform.up, Vector3.up);
-            float orientationReliability = 1f - Mathf.Clamp01(slopeDeg / angle);
-            float idxBase = orientationReliability > 0f ? lateral * orientationReliability : 0f;
-
-            float reliabilityIndex = idxBase * weatherFactor;
-            Color c = reliabilityIndex > 0f
-                ? Color.Lerp(Color.red, Color.green, reliabilityIndex)
-                : Color.black;
-
-            rend.material.color = c;
-            affected.Add(rend);
-
-            if (!reliabilityLabels.ContainsKey(rend))
+            if (Physics.Raycast(origin, direction, out RaycastHit hit, height))
             {
-                GameObject label = new GameObject("ReliabilityLabel");
-                var text = label.AddComponent<TextMesh>();
-                text.fontSize = 32; text.characterSize = 0.1f;
-                text.anchor = TextAnchor.MiddleCenter;
-                text.alignment = TextAlignment.Center;
-                text.color = Color.white;
-                reliabilityLabels[rend] = label;
-            }
+                if (Vector3.Distance(origin, hit.point) < minDistance)
+                    continue;
 
-            var labelGO = reliabilityLabels[rend];
-            labelGO.transform.position = centroid + Vector3.up * 2f;
-            labelGO.transform.rotation = Quaternion.LookRotation(Camera.main.transform.forward);
-            labelGO.GetComponent<TextMesh>().text =
-                $"Fiab: {(reliabilityIndex * 100f):0}%\nSlope: {slopeDeg:0.0}°\nMétéo : {(weatherFactor * 100f):0}%";
-            labelGO.SetActive(true);
+                Renderer rend = hit.collider.GetComponent<Renderer>();
+                if (rend == null || rend.material == null) continue;
+
+                if (!originalColors.ContainsKey(rend))
+                    originalColors[rend] = rend.material.color;
+
+                // Position et pente
+                Vector3 centroid = hit.collider.bounds.center;
+                float verticalDist = Mathf.Abs(centroid.y - origin.y);
+                float radiusAtPoint = Mathf.Tan(angle * Mathf.Deg2Rad) * verticalDist;
+                float horizontalDist = Vector3.Distance(new Vector3(origin.x, centroid.y, origin.z), centroid);
+
+                if (horizontalDist > radiusAtPoint) continue;
+
+                float lateral = 1f - Mathf.Clamp01(horizontalDist / radiusAtPoint);
+                float slopeDeg = Vector3.Angle(hit.collider.transform.up, Vector3.up);
+                float orientationReliability = 1f - Mathf.Clamp01(slopeDeg / angle);
+                float idxBase = orientationReliability > 0f ? lateral * orientationReliability : 0f;
+
+                float reliabilityIndex = idxBase * weatherFactor;
+
+                Color c = reliabilityIndex > 0f
+                    ? Color.Lerp(Color.red, Color.green, reliabilityIndex)
+                    : Color.black;
+
+                rend.material.color = c;
+                affected.Add(rend);
+
+                if (!reliabilityLabels.ContainsKey(rend))
+                {
+                    GameObject label = new GameObject("ReliabilityLabel");
+                    var text = label.AddComponent<TextMesh>();
+                    text.fontSize = 32; text.characterSize = 0.1f;
+                    text.anchor = TextAnchor.MiddleCenter;
+                    text.alignment = TextAlignment.Center;
+                    text.color = Color.white;
+                    reliabilityLabels[rend] = label;
+                }
+
+                var labelGO = reliabilityLabels[rend];
+                labelGO.transform.position = centroid + Vector3.up * 2f;
+                labelGO.transform.rotation = Quaternion.LookRotation(Camera.main.transform.forward);
+                labelGO.GetComponent<TextMesh>().text =
+                    $"Fiab: {(reliabilityIndex * 100f):0}%\nSlope: {slopeDeg:0.0}°\nMétéo : {(weatherFactor * 100f):0}%";
+                labelGO.SetActive(true);
+            }
         }
 
+        // Restaurer les objets non touchés
         foreach (var kvp in originalColors)
         {
             var rend = kvp.Key;
-            if (!affected.Contains(rend)) RestoreRenderer(rend);
+            if (!affected.Contains(rend))
+            {
+                rend.material.color = kvp.Value;
+                if (reliabilityLabels.ContainsKey(rend))
+                    reliabilityLabels[rend].SetActive(false);
+            }
         }
     }
 
