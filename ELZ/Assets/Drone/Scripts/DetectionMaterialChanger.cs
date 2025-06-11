@@ -9,17 +9,27 @@ public class ConeDetector : MonoBehaviour
     public float angle = 45f;
     public int resolution = 30;
     public KeyCode toggleKey = KeyCode.V;
-    
+
     [Header("Distance Settings")]
-    public float minDetectionDistance = 2f; // Distance minimale depuis la base
+    public float minDetectionDistance = 2f;
+
+    [Header("Memory")]
+    public float memoryDuration = 0.3f;
 
     private GameObject coneVisual;
     private bool coneVisible = true;
 
-    private Dictionary<Renderer, Color> originalColors = new();
-    private Dictionary<Renderer, GameObject> reliabilityLabels = new();
-
     public WeatherManager weatherManager;
+
+    private Dictionary<Renderer, Color> originalColors = new();
+
+    private class DetectionState
+    {
+        public float lastSeenTime;
+        public GameObject label;
+    }
+
+    private Dictionary<Renderer, DetectionState> detectionMemory = new();
 
     void Start()
     {
@@ -32,122 +42,126 @@ public class ConeDetector : MonoBehaviour
             coneVisual.SetActive(!coneVisual.activeSelf);
 
         float weatherFactor = weatherManager != null ? weatherManager.GetWeatherReliability() : 1f;
-
-        var affected = new HashSet<Renderer>();
         Vector3 origin = transform.position;
-        float minDistance = 2f; // Distance minimale à partir du sommet pour ignorer les objets trop proches
-        int rayCount = 200;     // Plus élevé = plus de précision
+        int rayCount = 200;
+        float currentTime = Time.time;
+
+        HashSet<Renderer> seenThisFrame = new();
 
         for (int i = 0; i < rayCount; i++)
         {
             float theta = Random.Range(0f, 2 * Mathf.PI);
-            float phi = Random.Range(0f, angle * Mathf.Deg2Rad); // Limité à l'angle du cône
+            float phi = Random.Range(0f, angle * Mathf.Deg2Rad);
 
-            // Sphère vers direction du cône
             Vector3 dirLocal = new Vector3(
                 Mathf.Sin(phi) * Mathf.Cos(theta),
-                -Mathf.Cos(phi), // -Y car le cône pointe vers le bas
+                -Mathf.Cos(phi),
                 Mathf.Sin(phi) * Mathf.Sin(theta)
             );
-
             Vector3 direction = transform.TransformDirection(dirLocal);
 
             if (Physics.Raycast(origin, direction, out RaycastHit hit, height))
             {
-                if (Vector3.Distance(origin, hit.point) < minDistance)
+                if (Vector3.Distance(origin, hit.point) < minDetectionDistance)
                     continue;
 
                 Renderer rend = hit.collider.GetComponent<Renderer>();
                 if (rend == null || rend.material == null) continue;
 
-                if (!originalColors.ContainsKey(rend))
-                    originalColors[rend] = rend.material.color;
+                TileInfo info = hit.collider.GetComponent<TileInfo>();
+                if (info == null) continue;
 
-                // Position et pente
+                float slopeDeg = info.slope;
+                float orientationReliability = info.reliability;
+
                 Vector3 centroid = hit.collider.bounds.center;
                 float verticalDist = Mathf.Abs(centroid.y - origin.y);
                 float radiusAtPoint = Mathf.Tan(angle * Mathf.Deg2Rad) * verticalDist;
                 float horizontalDist = Vector3.Distance(new Vector3(origin.x, centroid.y, origin.z), centroid);
-
                 if (horizontalDist > radiusAtPoint) continue;
 
-                float lateral = 1f - Mathf.Clamp01(horizontalDist / radiusAtPoint);
-                float slopeDeg = Vector3.Angle(hit.collider.transform.up, Vector3.up);
-                float orientationReliability = 1f - Mathf.Clamp01(slopeDeg / angle);
-                float idxBase = orientationReliability > 0f ? lateral * orientationReliability : 0f;
+                float reliability;
+                Color c;
 
-                float reliabilityIndex = idxBase * weatherFactor;
+                if (slopeDeg >= 20f)
+                {
+                    reliability = 0f;
+                    c = Color.black;
+                }
+                else
+                {
+                    // Linear reliability between 0° (100%) and 20° (0%)
+                    float slopeReliability = 1f - Mathf.Clamp01(slopeDeg / 20f);
+                    reliability = slopeReliability * weatherFactor;
+                    c = Color.Lerp(Color.red, Color.green, slopeReliability);
+                }
 
-                Color c = reliabilityIndex > 0f
-                    ? Color.Lerp(Color.red, Color.green, reliabilityIndex)
-                    : Color.black;
+                // Ancien calcul basé aussi sur la distance :
+                // float lateral = 1f - Mathf.Clamp01(horizontalDist / radiusAtPoint);
+                // float idxBase = lateral * orientationReliability;
+                // float reliability = idxBase * weatherFactor;
+
+                if (!originalColors.ContainsKey(rend))
+                    originalColors[rend] = rend.material.color;
 
                 rend.material.color = c;
-                affected.Add(rend);
+                seenThisFrame.Add(rend);
 
-                if (!reliabilityLabels.ContainsKey(rend))
+                if (!detectionMemory.ContainsKey(rend))
                 {
                     GameObject label = new GameObject("ReliabilityLabel");
                     var text = label.AddComponent<TextMesh>();
-                    text.fontSize = 32; text.characterSize = 0.1f;
+                    text.fontSize = 32;
+                    text.characterSize = 0.1f;
                     text.anchor = TextAnchor.MiddleCenter;
                     text.alignment = TextAlignment.Center;
                     text.color = Color.white;
-                    reliabilityLabels[rend] = label;
+
+                    detectionMemory[rend] = new DetectionState
+                    {
+                        lastSeenTime = currentTime,
+                        label = label
+                    };
+                }
+                else
+                {
+                    detectionMemory[rend].lastSeenTime = currentTime;
                 }
 
-                var labelGO = reliabilityLabels[rend];
+                var labelGO = detectionMemory[rend].label;
                 labelGO.transform.position = centroid + Vector3.up * 2f;
                 labelGO.transform.rotation = Quaternion.LookRotation(Camera.main.transform.forward);
                 labelGO.GetComponent<TextMesh>().text =
-                    $"Fiab: {(reliabilityIndex * 100f):0}%\nSlope: {slopeDeg:0.0}°\nMétéo : {(weatherFactor * 100f):0}%";
+                    $"Reliability: {(reliability * 100f):0}%\nSlope: {slopeDeg:0.0}°\nWeather: {(weatherFactor * 100f):0}%";
                 labelGO.SetActive(true);
             }
         }
 
-        // Restaurer les objets non touchés
-        foreach (var kvp in originalColors)
+        List<Renderer> toForget = new();
+        foreach (var kvp in detectionMemory)
         {
-            var rend = kvp.Key;
-            if (!affected.Contains(rend))
+            Renderer rend = kvp.Key;
+            DetectionState state = kvp.Value;
+
+            if (!seenThisFrame.Contains(rend))
             {
-                rend.material.color = kvp.Value;
-                if (reliabilityLabels.ContainsKey(rend))
-                    reliabilityLabels[rend].SetActive(false);
+                if (Time.time - state.lastSeenTime > memoryDuration)
+                {
+                    if (originalColors.ContainsKey(rend))
+                        rend.material.color = originalColors[rend];
+
+                    if (state.label != null)
+                        state.label.SetActive(false);
+
+                    toForget.Add(rend);
+                }
             }
         }
-    }
 
-    void RestoreRenderer(Renderer rend)
-    {
-        rend.material.color = originalColors[rend];
-        if (reliabilityLabels.ContainsKey(rend))
-            reliabilityLabels[rend].SetActive(false);
-    }
-
-    Mesh GenerateConeMesh()
-    {
-        Mesh mesh = new();
-        List<Vector3> vertices = new() { Vector3.zero };
-        List<int> triangles = new();
-        float radius = Mathf.Tan(angle * Mathf.Deg2Rad) * height;
-
-        for (int i = 0; i <= resolution; i++)
+        foreach (var rend in toForget)
         {
-            float theta = 2 * Mathf.PI * i / resolution;
-            vertices.Add(new Vector3(radius * Mathf.Cos(theta), -height, radius * Mathf.Sin(theta)));
+            detectionMemory.Remove(rend);
         }
-        for (int i = 1; i < resolution; i++)
-        {
-            triangles.Add(0);
-            triangles.Add(i);
-            triangles.Add(i + 1);
-        }
-
-        mesh.SetVertices(vertices);
-        mesh.SetTriangles(triangles, 0);
-        mesh.RecalculateNormals();
-        return mesh;
     }
 
     void CreateConeVisual()
@@ -172,5 +186,31 @@ public class ConeDetector : MonoBehaviour
         mat.renderQueue = 3000;
         mat.color = new Color(1f, 0f, 0f, 0.15f);
         mr.material = mat;
+    }
+
+    Mesh GenerateConeMesh()
+    {
+        Mesh mesh = new();
+        List<Vector3> vertices = new() { Vector3.zero };
+        List<int> triangles = new();
+        float radius = Mathf.Tan(angle * Mathf.Deg2Rad) * height;
+
+        for (int i = 0; i <= resolution; i++)
+        {
+            float theta = 2 * Mathf.PI * i / resolution;
+            vertices.Add(new Vector3(radius * Mathf.Cos(theta), -height, radius * Mathf.Sin(theta)));
+        }
+
+        for (int i = 1; i < resolution; i++)
+        {
+            triangles.Add(0);
+            triangles.Add(i);
+            triangles.Add(i + 1);
+        }
+
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(triangles, 0);
+        mesh.RecalculateNormals();
+        return mesh;
     }
 }
