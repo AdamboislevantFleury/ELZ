@@ -106,10 +106,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 41368ca0055404749918c5b1b998dd24, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 25
-  rotationSpeed: 3
-  landingCheckDistance: 1.5
   useRandomTarget: 0
+  terrain: {fileID: 0}
+  moveSpeed: 150
+  arrivalThreshold: 0.5
 --- !u!143 &3828511132424702121
 CharacterController:
   m_ObjectHideFlags: 0
@@ -155,6 +155,7 @@ MonoBehaviour:
   minDetectionDistance: 2
   memoryDuration: 0.3
   weatherManager: {fileID: 0}
+  windManager: {fileID: 0}
 --- !u!135 &463733633118800232
 SphereCollider:
   m_ObjectHideFlags: 0

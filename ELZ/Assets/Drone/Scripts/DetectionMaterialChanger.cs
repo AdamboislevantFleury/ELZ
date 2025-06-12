@@ -22,6 +22,9 @@ public class ConeDetector : MonoBehaviour
     public WeatherManager weatherManager;
 
     private Dictionary<Renderer, Color> originalColors = new();
+    private Material coneMaterialInstance;
+    
+    public WindManager windManager;
 
     private class DetectionState
     {
@@ -169,7 +172,7 @@ public class ConeDetector : MonoBehaviour
         mf.mesh = GenerateConeMesh();
 
         Material mat = new Material(Shader.Find("Standard"));
-        mat.SetFloat("_Mode", 3);
+        mat.SetFloat("_Mode", 3); // Transparent
         mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
         mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
         mat.SetInt("_ZWrite", 0);
@@ -177,7 +180,9 @@ public class ConeDetector : MonoBehaviour
         mat.EnableKeyword("_ALPHABLEND_ON");
         mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
         mat.renderQueue = 3000;
-        mat.color = new Color(1f, 0f, 0f, 0.15f);
+        mat.color = new Color(1f, 0f, 0f, 0.30f); // Rouge translucide
+        
+
         mr.material = mat;
     }
 
@@ -197,8 +202,8 @@ public class ConeDetector : MonoBehaviour
         for (int i = 1; i < resolution; i++)
         {
             triangles.Add(0);
-            triangles.Add(i);
             triangles.Add(i + 1);
+            triangles.Add(i);
         }
 
         mesh.SetVertices(vertices);

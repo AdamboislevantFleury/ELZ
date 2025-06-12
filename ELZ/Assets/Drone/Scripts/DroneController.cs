@@ -3,7 +3,7 @@ using UnityEngine;
 public class DroneController : MonoBehaviour
 {
     public bool useRandomTarget = false;
-    private ConnectedTileTerrain terrain;
+    public ConnectedTileTerrain terrain;
     private ConnectedTileTerrain.TileData targetTile;
 
     public float moveSpeed = 10f;
@@ -11,11 +11,13 @@ public class DroneController : MonoBehaviour
 
     public static int successfulLandingsMostReliable = 0;
     public static int successfulLandingsRandom = 0;
+    public System.Action<float> OnLanded;
+
 
     void Start()
     {
         terrain = FindObjectOfType<ConnectedTileTerrain>();
-
+        
         if (terrain == null)
         {
             Debug.LogError("ConnectedTileTerrain not found in the scene.");
@@ -44,11 +46,7 @@ public class DroneController : MonoBehaviour
         // Atterrissage
         if (Vector3.Distance(transform.position, target) < arrivalThreshold)
         {
-            if (useRandomTarget)
-                successfulLandingsRandom++;
-            else
-                successfulLandingsMostReliable++;
-
+            OnLanded?.Invoke(targetTile.reliability);
             Destroy(gameObject);
         }
     }
