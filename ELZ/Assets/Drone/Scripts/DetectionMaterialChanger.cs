@@ -96,7 +96,21 @@ public class ConeDetector : MonoBehaviour
                     // Linear reliability between 0° (100%) and 20° (0%)
                     float slopeReliability = 1f - Mathf.Clamp01(slopeDeg / 20f);
                     reliability = slopeReliability * weatherFactor;
-                    c = Color.Lerp(Color.red, Color.green, slopeReliability);
+                    Color green = Color.green;
+                    Color orange = new Color(1f, 0.65f, 0f); // RGB pour orange
+                    Color red = Color.red;
+
+                    if (slopeReliability > 0.5f)
+                    {
+                        float t = (slopeReliability - 0.5f) * 2f; // Remap [0.5, 1] → [0, 1]
+                        c = Color.Lerp(orange, green, t);
+                    }
+                    else
+                    {
+                        float t = slopeReliability * 2f; // Remap [0, 0.5] → [0, 1]
+                        c = Color.Lerp(red, orange, t);
+                    }
+
                 }
 
                 // Ancien calcul basé aussi sur la distance :

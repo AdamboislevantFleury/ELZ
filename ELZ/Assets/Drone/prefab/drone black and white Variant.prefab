@@ -108,7 +108,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   useRandomTarget: 0
   terrain: {fileID: 0}
-  moveSpeed: 150
+  moveSpeed: 2000
   arrivalThreshold: 0.5
 --- !u!143 &3828511132424702121
 CharacterController:
